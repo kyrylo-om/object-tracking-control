@@ -13,7 +13,7 @@ This implements the five main stages:
 
 import cv2
 import numpy as np
-from pynput.mouse import Controller
+from pynput.mouse import Button, Controller
 import screeninfo
 from threshold_controls_ui import ThresholdControlsUI
 
@@ -21,7 +21,7 @@ from threshold_controls_ui import ThresholdControlsUI
 class ObjectTracker:
     """Tracks a blue object and controls the mouse cursor."""
     
-    def __init__(self, min_contour_area=500):
+    def __init__(self, min_contour_area=500, lost_frame_threshold=3):
         """
         Initialize the object tracker.
         """
@@ -48,6 +48,11 @@ class ObjectTracker:
         self.mask_window = "Color Mask"
 
         self.controls_ui = None
+
+        self.last_screen_pos = None
+        self.loss_frames = 0
+        self.loss_click_armed = False
+        self.lost_frame_threshold = max(1, int(lost_frame_threshold))
     
     def initialize_camera(self, camera_index=0, frame_width=640, frame_height=480):
         """
@@ -188,6 +193,10 @@ class ObjectTracker:
                     screen_x, screen_y = self.camera_to_screen_coordinates(cx, cy)
                     
                     self.move_cursor(screen_x, screen_y)
+
+                    self.last_screen_pos = (screen_x, screen_y)
+                    self.loss_frames = 0
+                    self.loss_click_armed = True
                     
                     if show_preview:
                         cv2.circle(frame, (cx, cy), 10, (0, 255, 0), -1)
@@ -199,6 +208,13 @@ class ObjectTracker:
                         text2 = f"Screen: ({screen_x}, {screen_y})"
                         cv2.putText(frame, text2, (10, 60), 
                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                else:
+                    if self.loss_click_armed and self.last_screen_pos is not None:
+                        self.loss_frames += 1
+                        if self.loss_frames >= self.lost_frame_threshold:
+                            self.mouse.position = self.last_screen_pos
+                            self.mouse.click(Button.left, 1)
+                            self.loss_click_armed = False
                 
                 if show_preview:
                     cv2.imshow(self.preview_window, frame)
