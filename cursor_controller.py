@@ -187,16 +187,23 @@ class ObjectTracker:
                 if show_controls:
                     self.lower_blue, self.upper_blue, self.min_area = self.controls_ui.get_thresholds()
 
+                pause_tracking = show_controls and self.controls_ui.should_pause_tracking()
+
                 cx, cy, mask = self.detect_blue_object(frame)
 
                 if cx is not None and cy is not None:
                     screen_x, screen_y = self.camera_to_screen_coordinates(cx, cy)
-                    
-                    self.move_cursor(screen_x, screen_y)
+
+                    if not pause_tracking:
+                        self.move_cursor(screen_x, screen_y)
 
                     self.last_screen_pos = (screen_x, screen_y)
-                    self.loss_frames = 0
-                    self.loss_click_armed = True
+                    if pause_tracking:
+                        self.loss_frames = 0
+                        self.loss_click_armed = False
+                    else:
+                        self.loss_frames = 0
+                        self.loss_click_armed = True
                     
                     if show_preview:
                         cv2.circle(frame, (cx, cy), 10, (0, 255, 0), -1)
@@ -209,7 +216,10 @@ class ObjectTracker:
                         cv2.putText(frame, text2, (10, 60), 
                                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
                 else:
-                    if self.loss_click_armed and self.last_screen_pos is not None:
+                    if pause_tracking:
+                        self.loss_frames = 0
+                        self.loss_click_armed = False
+                    elif self.loss_click_armed and self.last_screen_pos is not None:
                         self.loss_frames += 1
                         if self.loss_frames >= self.lost_frame_threshold:
                             self.mouse.position = self.last_screen_pos

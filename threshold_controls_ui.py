@@ -1,6 +1,7 @@
 """Tkinter UI for live threshold tuning."""
 
 import colorsys
+import time
 import numpy as np
 import tkinter as tk
 from tkinter import ttk
@@ -25,6 +26,9 @@ class ThresholdControlsUI:
         self.upper_color_box = None
         self.gradient_canvas = None
         self.closed = False
+        self.is_focused = False
+        self.pause_release_delay = 0.5
+        self.pause_until = 0.0
 
     @staticmethod
     def _hsv_to_rgb(h, s, v):
@@ -72,6 +76,8 @@ class ThresholdControlsUI:
         self.root.resizable(True, True)
         self.root.minsize(920, 840)
         self.root.protocol("WM_DELETE_WINDOW", self.close)
+        self.root.bind("<FocusIn>", self._on_focus_in)
+        self.root.bind("<FocusOut>", self._on_focus_out)
 
         max_x = max(20, self.screen_width - 900)
         panel_x = min(max_x, 60 + (2 * self.camera_width))
@@ -180,7 +186,20 @@ class ThresholdControlsUI:
 
     def _on_slider_change(self, _value=None):
         """Refresh summary text while sliders move."""
+        self.pause_until = time.monotonic() + self.pause_release_delay
         self._update_summary()
+
+    def _on_focus_in(self, _event=None):
+        """Track when the control panel gains focus."""
+        self.is_focused = True
+
+    def _on_focus_out(self, _event=None):
+        """Track when the control panel loses focus."""
+        self.is_focused = False
+
+    def should_pause_tracking(self):
+        """Return True when tracking should pause during UI interaction."""
+        return self.is_focused or time.monotonic() < self.pause_until
 
     def get_thresholds(self):
         """Return current thresholds from UI values."""
@@ -278,10 +297,13 @@ class ThresholdControlsUI:
         try:
             self.root.update_idletasks()
             self.root.update()
+            self.is_focused = self.root.focus_displayof() is not None
             return not self.closed
         except tk.TclError:
             self.root = None
             self.closed = True
+            self.is_focused = False
+            self.pause_until = 0.0
             self.controls_vars = {}
             self.summary_label = None
             return False
@@ -318,5 +340,7 @@ class ThresholdControlsUI:
                 pass
             self.root = None
 
+        self.is_focused = False
+        self.pause_until = 0.0
         self.controls_vars = {}
         self.summary_label = None
