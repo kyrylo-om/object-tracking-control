@@ -26,13 +26,11 @@ class ObjectTracker:
         Initialize the object tracker.
         """
         self.mouse = Controller()
-        
-        # Get screen dimensions
+   
         screen = screeninfo.get_monitors()[0]
         self.screen_width = screen.width
         self.screen_height = screen.height
         
-        # HSV color range for blue object
         self.lower_blue = np.array([100, 150, 50])
         self.upper_blue = np.array([130, 255, 255])
         
@@ -63,18 +61,14 @@ class ObjectTracker:
         if not cap.isOpened():
             print("Error: Could not open webcam.")
             return None
-        
-        # Set camera resolution for better performance
+
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
         
-        # Get actual frame dimensions
         self.camera_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.camera_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-        # Calculate scaling factors for coordinate transformation
-        # Transformation matrix A = [sx  0 ]
-        #                            [ 0 sy]
+
         self.sx = self.screen_width / self.camera_width
         self.sy = self.screen_height / self.camera_height
         
@@ -85,36 +79,27 @@ class ObjectTracker:
         return cap
     
     def detect_blue_object(self, frame):
-        # Convert BGR to HSV
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        
-        # Create binary mask for blue color range
-        # M(i,j) = 1 if pixel is blue, 0 otherwise
+
         mask = cv2.inRange(hsv_frame, self.lower_blue, self.upper_blue)
         
-
-        # Find contours
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         if not contours:
             return None, None, mask
         
-        # Select the largest contour
+
         largest_contour = max(contours, key=cv2.contourArea)
         
-        # Filter by minimum area to avoid noise
         area = cv2.contourArea(largest_contour)
         if area < self.min_area:
             return None, None, mask
         
-        # Calculate centroid
         M = cv2.moments(largest_contour)
         
         if M["m00"] == 0:
             return None, None, mask
         
-        # Calculate centroid coordinates
-        # x = [cx, cy]^T - object position in camera coordinates
         cx = int(M["m10"] / M["m00"])
         cy = int(M["m01"] / M["m00"])
         
@@ -124,7 +109,6 @@ class ObjectTracker:
         screen_x = int(cx * self.sx)
         screen_y = int(cy * self.sy)
         
-        # Clamp values to screen bounds
         screen_x = max(0, min(screen_x, self.screen_width - 1))
         screen_y = max(0, min(screen_y, self.screen_height - 1))
         
@@ -181,7 +165,6 @@ class ObjectTracker:
                     print("Error: Failed to capture frame.")
                     break
                 
-                # Flip frame horizontally for mirror effect
                 frame = cv2.flip(frame, 1)
 
                 if show_controls:
