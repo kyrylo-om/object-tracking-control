@@ -196,8 +196,7 @@ class ThresholdControlsUI:
         self.is_focused = False
 
     def should_pause_tracking(self):
-        """Return True when tracking should pause during UI interaction."""
-        return self.is_focused or time.monotonic() < self.pause_until
+        return time.monotonic() < self.pause_until
 
     def get_thresholds(self):
         """Return current thresholds from UI values."""
