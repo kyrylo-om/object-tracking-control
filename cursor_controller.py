@@ -72,15 +72,24 @@ class ObjectTracker:
 
         mask = cv2.inRange(hsv_frame, self.lower_blue, self.upper_blue)
         
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         
         if not contours:
             return None, None, mask
-        
 
-        largest_contour = max(contours, key=cv2.contourArea)
+        def contour_area(contour):
+            points = contour.reshape(-1, 2)
+            n = len(points)
+            area = 0.0
+            for i in range(n):
+                x_i, y_i = points[i]
+                x_next, y_next = points[(i + 1) % n]
+                area += (x_i * y_next) - (x_next * y_i)
+            return abs(area) / 2.0
+
+        largest_contour = max(contours, key=contour_area)
         
-        area = cv2.contourArea(largest_contour)
+        area = contour_area(largest_contour)
         if area < self.min_area:
             return None, None, mask
 
