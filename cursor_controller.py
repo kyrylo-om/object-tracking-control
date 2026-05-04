@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""
-Real-Time Object Tracking for Computer Control
-A system that controls the mouse cursor using blue object tracking via webcam.
-
-This implements the five main stages:
-1. Frame Capture
-2. Color Detection  
-3. Object Position Extraction
-4. Coordinate Transformation
-5. Cursor Control
-"""
 
 import cv2
 import numpy as np
@@ -94,14 +83,10 @@ class ObjectTracker:
         area = cv2.contourArea(largest_contour)
         if area < self.min_area:
             return None, None, mask
-        
-        M = cv2.moments(largest_contour)
-        
-        if M["m00"] == 0:
-            return None, None, mask
-        
-        cx = int(M["m10"] / M["m00"])
-        cy = int(M["m01"] / M["m00"])
+
+        contour_points = largest_contour.reshape(-1, 2)
+        cx = int(np.mean(contour_points[:, 0]))
+        cy = int(np.mean(contour_points[:, 1]))
         
         return cx, cy, mask
     
@@ -127,7 +112,6 @@ class ObjectTracker:
             return
         
         print("\nTracking started!")
-        print("Move a blue object in front of the camera.")
 
         if show_preview:
             cv2.namedWindow(self.preview_window, cv2.WINDOW_AUTOSIZE)
@@ -148,9 +132,6 @@ class ObjectTracker:
                 min_area=self.min_area,
             )
             show_controls = self.controls_ui.initialize()
-            if show_controls:
-                print("Adjust values in the Tk control panel.")
-                print("Use 'Close & Stop' on the panel or press 'q' in the preview window.")
 
         print("Press 'q' to quit\n")
         
@@ -227,7 +208,6 @@ class ObjectTracker:
 
             cap.release()
             cv2.destroyAllWindows()
-            print("Camera released and windows closed.")
 
 
 def main():

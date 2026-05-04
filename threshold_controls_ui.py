@@ -1,5 +1,3 @@
-"""Tkinter UI for live threshold tuning."""
-
 import colorsys
 import time
 import numpy as np
